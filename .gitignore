@@ -1,5 +1,6 @@
 # py project config
 Pipfile*
+__pycache__
 
 # emacs
 *~
