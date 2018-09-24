@@ -6,6 +6,7 @@ import itertools
 import os
 import sys
 from pathlib import PurePath
+from collections import Counter
 
 
 DIFF_R = '/project0/OM-mRNA-pig-limingzhou-P160901/sus_scrofa/diff/diff_analysis.R'
@@ -183,6 +184,7 @@ def main(sample_inf, counts, tpm_table,
         each_fc_val_df = diff_num_df.copy()
         each_all_fc_val_df = diff_num_df.copy()
         each_diff_genes_dict = dict()
+        each_diff_genes_app_dict = Counter()
         for each_compare in compare_list:
             each_compare_out = os.path.join(out_dir, each_compare)
             each_compare_pair = each_compare.split('_vs_')
@@ -232,6 +234,7 @@ def main(sample_inf, counts, tpm_table,
                 each_compare_pair[0], []).extend(all_diff_genes)
             each_diff_genes_dict.setdefault(
                 each_compare_pair[1], []).extend(all_diff_genes)
+            each_diff_genes_app_dict.update(all_diff_genes)
         each_diff_num_df = each_diff_num_df.dropna(how='all')
         each_diff_num_df = each_diff_num_df.loc[:, each_diff_num_df.index]
         for each_index in each_diff_num_df.index:
@@ -255,6 +258,14 @@ def main(sample_inf, counts, tpm_table,
         each_fc_val_df.to_csv(each_df_fc_file, sep='\t')
         each_all_fc_file = out_dir / '{t}.all.fc.txt'.format(t=each_type)
         each_all_fc_val_df.to_csv(each_all_fc_file, sep='\t')
+        each_diff_genes_app_file = out_dir / \
+            '{t}.diff.gene.app.txt'.format(t=each_type)
+        each_diff_genes_app_df = pd.DataFrame(
+            list(each_diff_genes_app_dict.items()),
+            columns=['Gene_ID',
+                     'Diff_Pair_number'])
+        each_diff_genes_app_df.to_csv(each_diff_genes_app_file, sep='\t',
+                                      index=False)
 
 
 if __name__ == '__main__':
