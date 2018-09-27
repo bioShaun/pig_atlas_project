@@ -32,11 +32,12 @@ def exp_number_summary(gene_exp, group_inf, cutoff, outfile,
 
     exp_number_stats_dict = OrderedDict()
 
+    compare_set = set()
     if group_file1 is not None:
         group_df1 = pd.read_table(group_file1,
                                   header=None,
                                   index_col=0)
-        all_groups = group_df1.index
+        all_groups = group_df1.index.unique()
     else:
         all_groups = tissue_max_df.columns
 
@@ -57,7 +58,14 @@ def exp_number_summary(gene_exp, group_inf, cutoff, outfile,
             group_df2 = pd.read_table(group_file2,
                                       header=None,
                                       index_col=0)
-            for each_t2 in group_df2.index:
+            group2_names = group_df2.index.unique()
+            for each_t2 in group2_names:
+                # if ((each_t, each_t2) in compare_set
+                #     or (each_t2, each_t) in compare_set
+                #         or each_t2 == each_t):
+                if each_t2 == each_t:
+                    continue
+                compare_set.add((each_t, each_t2))
                 exp_number_stats_dict.setdefault(
                     col1, []).append(each_t)
                 exp_number_stats_dict.setdefault(

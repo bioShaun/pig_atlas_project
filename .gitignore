@@ -4,6 +4,7 @@ __pycache__
 
 # emacs
 *~
+*_flymake.py
 
 # data files
 data_dir

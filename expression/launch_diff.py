@@ -263,7 +263,7 @@ def main(sample_inf, counts, tpm_table,
         each_diff_genes_app_df = pd.DataFrame(
             list(each_diff_genes_app_dict.items()),
             columns=['Gene_ID',
-                     'Diff_Pair_number'])
+                     'Diff_Pair_Number'])
         each_diff_genes_app_df.to_csv(each_diff_genes_app_file, sep='\t',
                                       index=False)
 
