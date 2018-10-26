@@ -13,4 +13,4 @@ def rename_header(exp_table, name_map, rename_table):
 
 
 if __name__ == '__main__':
-    fire.Fire()
+    fire.Fire(rename_header)

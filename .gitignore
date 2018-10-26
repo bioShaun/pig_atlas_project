@@ -12,3 +12,7 @@ data_dir
 # test sh
 launch.sh
 *.log.*
+
+
+# R tmp
+Rplots.pdf

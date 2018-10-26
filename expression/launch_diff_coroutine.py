@@ -103,6 +103,7 @@ class Diff(object):
                     )
                 cmd_list.append(each_cmd)
         if cmd_list:
+            # print(cmd_list[0])
             loop = asyncio.get_event_loop()
             f = asyncio.wait([launch_cmd(each) for each in cmd_list])
             loop.run_until_complete(f)

@@ -60,7 +60,7 @@ pcluster <- function(data,types){
                                       panel.background=element_rect(fill="white"),
                                       panel.grid=element_blank())
 
-    if (method == 'pearson') {
+    if (method %in% c('pearson', 'spearman')) {
         sample_cor = cor(data, method=method, use='pairwise.complete.obs')
         sample_dist = as.dist(1-sample_cor)
         sample_dist = sample_dist*100

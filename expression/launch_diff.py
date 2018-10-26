@@ -1,15 +1,20 @@
 from __future__ import print_function
-import envoy
 import click
 import pandas as pd
+from pandas import DataFrame
 import itertools
 import os
 import sys
-from pathlib import PurePath
+from pathlib import PurePath, Path
 from collections import Counter
 
 
-DIFF_R = '/project0/OM-mRNA-pig-limingzhou-P160901/sus_scrofa/diff/diff_analysis.R'
+def check_dir(diff_dir):
+    diff_dir = Path(diff_dir)
+    if diff_dir.exists() and list(diff_dir.iterdir()):
+        return True
+    else:
+        return False
 
 
 def get_compare_names(sample_inf, method='pairwise',
@@ -57,12 +62,24 @@ def get_file_lines(table, gene_type_df, gene_type, sep='\t'):
     return list(selected_table.index)
 
 
-def cal_gene_type_m_fc(df, gene_type_df, gene_type):
+def cal_gene_type_m_fc(table_df, gene_type_df, gene_type):
+    merged_table_df = table_df.merge(gene_type_df,
+                                     left_index=True, right_index=True,
+                                     how='left')
+    selected_table = merged_table_df[merged_table_df.gene_biotype == gene_type]
+    return selected_table.logFC.abs().quantile(0.5)
+
+
+def get_fc_df(table, gene_type_df, gene_type):
+    if not os.path.exists(table):
+        return None
+    df = pd.read_table(table, index_col=0)
     merged_table_df = df.merge(gene_type_df,
                                left_index=True, right_index=True,
                                how='left')
     selected_table = merged_table_df[merged_table_df.gene_biotype == gene_type]
-    return selected_table.logFC.abs().quantile(0.5)
+    selected_table.index.name = 'gene_id'
+    return selected_table.loc[:, ['gene_biotype', 'logFC']]
 
 
 def cal_fc_stats(table, gene_type_df, gene_type):
@@ -151,24 +168,8 @@ def main(sample_inf, counts, tpm_table,
     compare_list = get_compare_names(sample_inf, method=method)
     for each_compare in compare_list:
         each_compare_out = os.path.join(out_dir, each_compare)
-        if os.path.exists(each_compare_out):
-            # print '{comp} analysis is finished.'.format(comp=each_compare)
-            continue
-        else:
-            os.makedirs(each_compare_out)
-            each_cmd = 'Rscript {diff_r} --counts {ct} --compare {cp} --sample_inf {s} \
-                        --tpm_table {tpm} \
-                        -o {o} --qvalue {q} --logfc {fc}'.format(
-                ct=counts, cp=each_compare, s=sample_inf,
-                o=each_compare_out,
-                q=qvalue, fc=fc, diff_r=DIFF_R,
-                tpm=tpm_table)
-            if lib_size:
-                each_cmd = '{cmd} --lib_size {lib}'.format(
-                    lib=lib_size, cmd=each_cmd)
-            # print("{cp} start".format(cp=each_compare))
-            envoy.run(each_cmd)
-            # print("{cp} finished".format(cp=each_compare))
+        if not check_dir(each_compare_out):
+            sys.exit('{cmp} result not exists!'.format(cmp=each_compare))
 
     sample_df = pd.read_table(sample_inf, index_col=1, header=None)
     sample_df.columns = ['tissue']
@@ -185,6 +186,8 @@ def main(sample_inf, counts, tpm_table,
         each_all_fc_val_df = diff_num_df.copy()
         each_diff_genes_dict = dict()
         each_diff_genes_app_dict = Counter()
+        fc_dfs = []
+        diff_fc_dfs = []
         for each_compare in compare_list:
             each_compare_out = os.path.join(out_dir, each_compare)
             each_compare_pair = each_compare.split('_vs_')
@@ -200,6 +203,11 @@ def main(sample_inf, counts, tpm_table,
                                                ))
             all_de_file = os.path.join(each_compare_out,
                                        '{c}.edgeR.DE_results.txt'.format(c=each_compare))
+            fc_dfs.append(get_fc_df(all_de_file, gene_type_df, each_type))
+            diff_fc_dfs.append(
+                get_fc_df(each_up_gene_file, gene_type_df, each_type))
+            diff_fc_dfs.append(
+                get_fc_df(each_down_gene_file, gene_type_df, each_type))
             each_up_genes = get_file_lines(
                 each_up_gene_file, gene_type_df, each_type)
             each_up_fc = cal_fc_stats(
@@ -235,6 +243,24 @@ def main(sample_inf, counts, tpm_table,
             each_diff_genes_dict.setdefault(
                 each_compare_pair[1], []).extend(all_diff_genes)
             each_diff_genes_app_dict.update(all_diff_genes)
+
+        def merge_fc_df(fc_dfs):
+            fc_dfs = [each for each in fc_dfs
+                      if each is not None]
+            fc_df = pd.concat(fc_dfs)
+            fc_df.loc[:, 'logFC'] = fc_df.logFC.abs()
+            fc_df = fc_df.groupby(['gene_id', 'gene_biotype'])[
+                'logFC'].median()
+            return DataFrame(fc_df)
+
+        fc_df = merge_fc_df(fc_dfs)
+        fc_file = out_dir / '{t}.fc.median.table.txt'.format(t=each_type)
+        fc_df.to_csv(fc_file, sep='\t')
+        diff_fc_df = merge_fc_df(diff_fc_dfs)
+        diff_fc_file = out_dir / \
+            '{t}.diff.fc.median.table.txt'.format(t=each_type)
+        diff_fc_df.to_csv(diff_fc_file, sep='\t')
+
         each_diff_num_df = each_diff_num_df.dropna(how='all')
         each_diff_num_df = each_diff_num_df.loc[:, each_diff_num_df.index]
         for each_index in each_diff_num_df.index:

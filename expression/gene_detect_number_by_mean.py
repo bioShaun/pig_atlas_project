@@ -83,6 +83,7 @@ tissue_gene_exp_df = pd.merge(
     how='left')
 tissue_max_df = tissue_gene_exp_df.groupby(['tissue']).max().T
 exp_tissue_df = tissue_max_df > 1
+exp_tissue_df = exp_tissue_df.astype('int')
 gt_exp_tissue_df = pd.merge(exp_tissue_df, gene_type_df,
                             left_index=True, right_index=True,
                             how='left')

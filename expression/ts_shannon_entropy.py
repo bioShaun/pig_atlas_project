@@ -10,7 +10,7 @@ UB_CUTOFF = 3.7
 
 def shannon_entropy(series):
     p_norm = series[series > 0] / series.sum()
-    return -sum(np.log(p_norm) * p_norm)
+    return -sum(np.log2(p_norm) * p_norm)
 
 
 @click.command()
