@@ -1,6 +1,7 @@
 from __future__ import division
 from __future__ import print_function
 import pandas as pd
+import os
 import sys
 
 if len(sys.argv) != 6:
@@ -20,6 +21,9 @@ tissue = sys.argv[3]
 cutoff = float(sys.argv[4])
 prefix = sys.argv[5]
 
+prefix_dir = os.path.dirname(prefix)
+if not os.path.exists(prefix_dir):
+    os.makedirs(prefix_dir)
 
 gene_exp_df = pd.read_table(gene_exp, index_col=0)
 gene_type_df = pd.read_table(gene_type, index_col=0)
@@ -82,7 +86,7 @@ tissue_gene_exp_df = pd.merge(
     left_index=True, right_index=True,
     how='left')
 tissue_max_df = tissue_gene_exp_df.groupby(['tissue']).max().T
-exp_tissue_df = tissue_max_df > 1
+exp_tissue_df = tissue_max_df > cutoff
 exp_tissue_df = exp_tissue_df.astype('int')
 gt_exp_tissue_df = pd.merge(exp_tissue_df, gene_type_df,
                             left_index=True, right_index=True,

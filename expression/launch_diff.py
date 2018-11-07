@@ -100,6 +100,16 @@ def cal_all_fc(table, gene_type_df, gene_type):
     return up_fc, down_fc
 
 
+def get_de_genes_df(de_gene_file, name):
+    if not os.path.exists(de_gene_file):
+        de_genes_df = DataFrame([], columns=[name])
+    else:
+        de_genes_df = pd.read_table(de_gene_file, index_col=0,
+                                    header=None)
+        de_genes_df.loc[:, name] = 1
+    return de_genes_df
+
+
 @click.command()
 @click.option(
     '-s',
@@ -188,6 +198,7 @@ def main(sample_inf, counts, tpm_table,
         each_diff_genes_app_dict = Counter()
         fc_dfs = []
         diff_fc_dfs = []
+        de_number_matrixs = []
         for each_compare in compare_list:
             each_compare_out = os.path.join(out_dir, each_compare)
             each_compare_pair = each_compare.split('_vs_')
@@ -203,6 +214,10 @@ def main(sample_inf, counts, tpm_table,
                                                ))
             all_de_file = os.path.join(each_compare_out,
                                        '{c}.edgeR.DE_results.txt'.format(c=each_compare))
+            all_de_genes_file = os.path.join(each_compare_out,
+                                             '{c}.ALL.edgeR.DE_results.diffgenes.txt'.format(c=each_compare))
+            de_number_matrixs.append(get_de_genes_df(
+                all_de_genes_file, each_compare))
             fc_dfs.append(get_fc_df(all_de_file, gene_type_df, each_type))
             diff_fc_dfs.append(
                 get_fc_df(each_up_gene_file, gene_type_df, each_type))
@@ -260,6 +275,18 @@ def main(sample_inf, counts, tpm_table,
         diff_fc_file = out_dir / \
             '{t}.diff.fc.median.table.txt'.format(t=each_type)
         diff_fc_df.to_csv(diff_fc_file, sep='\t')
+
+        # de gene matrix
+        de_number_matrix_df = pd.concat(de_number_matrixs,
+                                        sort=False, axis=1)
+        de_number_matrix_df.fillna(0, inplace=True)
+        de_number_matrix_df = de_number_matrix_df.astype('int')
+        de_number_matrix_df = de_number_matrix_df.merge(gene_type_df,
+                                                        left_index=True,
+                                                        right_index=True)
+        de_number_matrix_file = out_dir / \
+            '{t}.de_number.matrix.txt'.format(t=each_type)
+        de_number_matrix_df.to_csv(de_number_matrix_file, sep='\t')
 
         each_diff_num_df = each_diff_num_df.dropna(how='all')
         each_diff_num_df = each_diff_num_df.loc[:, each_diff_num_df.index]
